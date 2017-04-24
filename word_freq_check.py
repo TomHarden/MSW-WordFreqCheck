@@ -1,170 +1,48 @@
-#This is a Python3 script to for checking the word choice of documents of text.
-#Every word in a (*.txt or *.doc) file is put into a list of tuples (String word, int count)
-#Every word in a paragraph is put into a list of tuples (String word, int count)
-#Every word in a sentence is put into a list of tuples (String word, int count)
-#Every word is then scored accordingly in a dictionary:
-#     for every word a sentence contains more than once, it receives a score of +3
-#     for every word a paragraph contains more than once, it recieves a score of +2
-#     for every word that is used in a file, it receive a score of its total word count.
-#The user is then presented these words in order of score, and is allowed to cycle back and forth through the list of words
-#The user may choose to exit the application by entering "0" at any time.
+#AUTHOR:    Tom Harden
+#DATE:      20 April 2017
+
+#This is a Python3 script to for checking the word frequency of documents of text.
+#Every word in the file (*.doc or *.txt) is then scored, and the score is recorded in a dict:
+#     for every word a sentence contains more than once, it receives a score of +10
+#     for every word a paragraph contains more than once, it recieves a score of +4
+#     for every word that is used in a file, it receive a score of its total word count (ie +1).
+#The user is then presented these words in order of frequency score.
+#The user may update the scoring by pressing enter.
+#The user must exit the program and relaunch it to score a new file.
 
 ############################################################
 ####################    IMPORTS         ####################
 ############################################################
-import os#necessary to get the directory of the file in question (and the directory of this program).
 from docx import Document#necessary to read MS docx files!  WIthout it, limited to only reading text files ans ASCII characters!
+from file_manipulation import * #imports all functions pertaining to file_manipulation. NOT ALL FUNCTIONS FROM THE CLASS ARE USED (unsafe?)
 
 ############################################################
 ####################    FUNCTIONS       ####################
 ############################################################
-#prompts the user for a file name and extension.  Once a valid file is input, the parent directory, name, and extension are returned as a tuplefrom docx import Document # necessary
-#@return (String, String, String) returns a tuple of three strings, the parent directory, the file name, and the file extension.
-def getFileAttributes():
-    filePath = os.path.dirname(os.path.realpath(__file__))
-    fullFileName = input("Enter the name and extension of the file (ex. \"Some File.docx\").\nIMPORTANT:  It must be in the same directory as this program!:\n\n    >>>" + filePath + "\\")
-    fileName, fileExtension = "", ""
-    beforeExtension = True
-    if (fullFileName.count(".") != 1):
-        print("ERROR, PROBLEM WITH FILE EXTENSION (check period!).\n\n\n")
-        return getFileAttributes()
-    for char in fullFileName:
-        if char != "." and beforeExtension:
-            fileName += char
-        else:
-            beforeExtension = False
-            fileExtension += char
-    if fileExists(filePath, fileName, fileExtension) == False:
-        print("ERROR, THAT FILE COULD NOT BE FOUND.\n\n\n")
-        return getFileAttributes()
-    return (filePath, fileName, fileExtension)
-
-#checks if a specified file exists.  Returns true if the file is found, and false if the file is not
-#@param String filePath is the parent directory of the file
-#@param String fileName is the name of the file (does not include the parent directory or extension!
-#@param String fileExtension is the extension of the file (ex. ".txt")
-#@return bool return true if the file if found (ie exists), and false otherwise.
-def fileExists(filePath, fileName, fileExtension, action = 'r'):
-    try:
-        f = open(filePath + "\\" + fileName + fileExtension, action)
-        f.close()
-        return True;
-    except:
-        try:
-            doc = Document(open(filePath + "\\" + fileName + fileExtension, action + 'b'))
-            doc.close()
-            return True
-        except FileNotFoundError:
-            return False
-        return False
-    return True
-
-#Appends a line to a specified file (assumed in working directory), and also adds additional functionality for the addiion.  It is assumed, however, that the appending is standard
-#@String s is the string representing the text to be added to the file
-#@String fileName is the name of the dile to which the text will be appended.  It is assumed to be in the working directory.
-#@bool allowDuplicates is a boolean value which is true by default.  If specified to false, the string being added must be an original line in the file or else it will not be added
-#@bool alphabetizeFile is a boolean value which is false by default.  If specified to be true, the entire file will be alphabetized by line.  the current file will then be overwritten with the newly alphabetized version.
-#@return void
-def addNewLine(s, fileName, allowDuplicates = True, alphabetizeFile = False):#return none;  appends string s to a new line in file fileName and then rewrites the file so it is in alpabetical order.  CURRENTLY NOT EFFIECIENT FOR LARGE FILE SIZES.  Assumes that s is a verified string.
-    if isKnown(s, fileName):#checks if the element to be added is already in the file.  Also checks that there is a file to add to!  (if not, creates the file!)
-        if allowDuplicates == False:#from encasing (previous) if statement, know that there is a dupliate in there! So no need to add, just return!
-            return#no need to add anthing
-        f = open(fileName, 'a')#append this file
-        f.write(s + "\n")#add the element to the file before sorting it.
-        f.close()
-    else: #file (or string in that file) does not exist!  no need to D2!
-        f = open(fileName, 'a')#append this file
-        f.write(s + "\n")#add the element to the file before sorting it.
-        print("Appended " + s + " to " + fileName)
-        f.close()
-    if alphabetizeFile == True:
-        #need to enter the name so it is in alphabetical order!
-        f = open(fileName, 'rb')
-        tmpList = []
-        for line in sorted(f):
-            tmpList.append(line)
-            print("#####" + line)
-        f.close()
-        f = open(fileName, 'w')
-        for element in tmpList:
-            f.write(element)
-        f.close()
-
-#safely creates a file of the specified name (assumed to be in the working directory!)
-#@String fileName is the name of the file to be created.  It will be created by in the current working directory
-#@return void
-def createFile(fileName):
-    f = open(fileName, 'a')
-    f.close
-
-#returns all the text of a file as a single string.
-#@String directory is the parent directory of the file specified in fileName
-#@return void
-def fileToString(directory, fileName, extension):
-    #######################
-    ### LOCAL FUNCTIONS ###
-    #######################
-    def isAscii(s):
-        try:
-            s.encode('ascii')
-        except UnicodeEncodeError:
-            return False
-        else:
-            return True
-
-    ###########################
-    ###        MAIN         ###
-    ###########################
-    eraseTmpFile = False
-    TMP_FILENAME = directory + "tmpFile" + '.txt'
-    if (extension == ".txt"):
-        f = open(directory + "\\" + fileName + extension, 'r')
-    elif (extension == ".docx"):
-        print ("\n Looking for the following doc: (" + directory + "\\) " + fileName + extension + "\n")
-        doc = Document(open(directory + "\\" + fileName + extension, 'rb'))
-        createFile(TMP_FILENAME)
-        eraseTmpFile = True
-        tmpf = open(TMP_FILENAME, 'a')
-        for para in doc.paragraphs:
-            try:
-                tmpf.write(para.text)
-            except UnicodeEncodeError:
-                tmpf.write(" ")
-            tmpf.write("\n")#turn string to txt file
-        tmpf.close()
-        f = open(TMP_FILENAME, 'r')
-    s = "";
-    for line in f:
-        for char in line:
-            if (isAscii(str(char))):
-                s += str(char)
-            else:
-                s+= " "
-    f.close()
-    if (eraseTmpFile):
-        os.remove(TMP_FILENAME)
-    return s
-
-def updateScores(l, d, bonus):
-    alreadyUsedElts = [" "]
-    alreadyUsedElts.clear()
+#updates the scoring dictionary based on the specified list (sentence, paragraph, or file).
+#   The first occurrence of a word is given a score of 1.  The penalty for the first occurrence is
+#   "1". Additional occurences recieve the specified penalty.
+#@param list l is a list of all words in a body of text (either sentence, paragraph, or file)
+#@param dictionary d is a dict which scores the frequencies of the words in all bodies of text
+#@param int penalty is the size of the penalty to be added to the word's frequency score.
+def updateScores(l, d, penalty):
+    alreadyUsedElts = list()#used to track the elts as they occur for scoring purposes
     for elt in l:
         if elt in d:
             if alreadyUsedElts.count(elt) > 0:
-                d[elt] += bonus
+                d[elt] += penalty
             else:
                 alreadyUsedElts.append(elt)
                 d[elt] += 1
         else:
             alreadyUsedElts.append(elt)
             d[elt] = 1
-    return d
 
-
+#converts a string to a list using specified characters as delimiters
+#@param string s is the string to be converted into a list.
+#@return list l is the list made from s
 def delimitStringToList(s):
-    FIRST_ELT = " "
-    l = [FIRST_ELT]
-    l.clear()
+    l = list()
     tmpStr = ""
     for char in s:
         if isRunonPunctuation(char) or isMiscPunctuation(char) or char == " ":
@@ -182,49 +60,50 @@ def delimitStringToList(s):
         l.append(tmpStr)
     return l
 
+#returns true if the specified character is punctuation for ending sentences
 def isEndingPunctuation(c):
     return c == '.' or c == '!' or c == '?' or c == ';'
+#returns true if the specified character is punctuation for sentence breaks
 def isRunonPunctuation(c):
     return c == "," or c == "\t" or c == ':'
+#returns true if the specified character is punctuation for that has various purposes
 def isMiscPunctuation(c):
     return c == "\"" or c == "(" or c == ")"
+#returns true if the specified character is punctuation
 def isPunctuation(c):
     return isEndingPunctuation(c) or isRunonPunctuation(c) or isMiscPunctuation(c)
 
+#converts a dictionary's keys and their values to a sorted list, sorted by the values stored at the dictionary's keys
+#@param dictionary d is a dict of words as keys, and the value stored at the key corresponds with the word's frequency score
+#@return list l the sorted list of dictionary keys and values based on the value of the keys.
 def convertToSortedList(d):
-    l = [""]
-    l.clear()
+    l = list()
     for k,v in d.items():
         l.append((v, k))
     return sorted(l, key=lambda x: x[0])
 
+#returns the number of elts in a list
 def getLength(l):
     totalWords = 0
     for elt in l:
         totalWords += 1
     return totalWords
 
+############################################################
+####################    PROGRAM MAIN    ####################
+############################################################
+SAME_SENTENCE_PENALTY = 10;#returns true if the specified character is punctuation for ending sentences
+SAME_PARAGRAPH_PENALTY = 4;#returns true if the specified character is punctuation for ending sentences
+SAME_FILE_PENALTY = 1;#returns true if the specified character is punctuation for ending sentences
 
-############################################################
-####################        MAIN        ####################
-############################################################
-FIRST_ELT = " "
-SENTENCE_WEIGHT = 10;
-PARAGRAPH_WEIGHT = 4;
-FILE_WEIGHT = 1;
-f = getFileAttributes()
+f = getFileAttributes()#get a tuple consisting of (the parent directory, filename, and file extension)
+
 while(True):
-    s = fileToString(f[0], f[1], f[2]).upper()
-    allWords = delimitStringToList(s)#takes out all spaces, only leaving returns
-    ###THere has to be a better way to initialize empty lists...
-    fileWordCount = [FIRST_ELT]
-    fileWordCount.clear()
-    paragraphWordCount = [FIRST_ELT]
-    paragraphWordCount.clear()
-    sentenceWordCount = [FIRST_ELT]
-    sentenceWordCount.clear()
+    s = fileToString(f[0], f[1], f[2]).upper()#converts the text of the file to all upper case (this takes care of dealing with comparing words of differing cases)
+    allWords = delimitStringToList(s)#takes out all spaces, only leaves returns
+    fileWordCount, paragraphWordCount, sentenceWordCount = list(), list(), list()
 
-    allWordScores = {}
+    allWordScores = dict()
     for word in allWords:
         #remove punctuation from the end of words
         if isEndingPunctuation(word[-1]) == False:
@@ -232,25 +111,25 @@ while(True):
         else:#move onto new sentence
             word = word[:-1]
             sentenceWordCount.append(word)#add the last word minus the punctuation
-            allWordScores = updateScores(sentenceWordCount, allWordScores, SENTENCE_WEIGHT)
+            updateScores(sentenceWordCount, allWordScores, SAME_SENTENCE_PENALTY)
             sentenceWordCount.clear()
 
         #separate into paragraphs (the returns have already been removed and are treated as individual words!)
         if word != "\n" and word != "\r\n":
             paragraphWordCount.append(word)
         else:#move onto new paragraph
-            allWordScores = updateScores(paragraphWordCount, allWordScores, PARAGRAPH_WEIGHT)
+            updateScores(paragraphWordCount, allWordScores, SAME_PARAGRAPH_PENALTY)
             paragraphWordCount.clear()
 
         #update file Count
         fileWordCount.append(word)
 
-    allWordScores = updateScores(fileWordCount, allWordScores, FILE_WEIGHT)
-    allWordScores = updateScores(paragraphWordCount, allWordScores, PARAGRAPH_WEIGHT)
-    allWordScores = updateScores(sentenceWordCount, allWordScores, SENTENCE_WEIGHT)
+    updateScores(fileWordCount, allWordScores, SAME_FILE_PENALTY)
+    updateScores(paragraphWordCount, allWordScores, SAME_PARAGRAPH_PENALTY)
+    updateScores(sentenceWordCount, allWordScores, SAME_SENTENCE_PENALTY)
 
-    allWords = {}
-    allWords = updateScores(fileWordCount, allWords, 1)
+    allWords = dict()#reassign list allWords into a dict()
+    updateScores(fileWordCount, allWords, 1)#This is to get the total number of times the word was used in the file!
 
     print("\n+____________________________________________\n")
     print (" _Freq_\t_Total_\t_Word_")
@@ -266,6 +145,6 @@ while(True):
             print(" ----------- Top " + str(totalWords - count) + " -----------")
 
     print("Scoring complete.\nTotal Vocab used: " + str(totalWords) + " different words.\n")
-    input("Hit \'enter\' to refresh the evaluation\n\n")
+    input("Hit \'enter\' to refresh the scores\n\n")
 print("Goodbye.")
 exit(0)
